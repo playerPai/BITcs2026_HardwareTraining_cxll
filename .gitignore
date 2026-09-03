@@ -1,0 +1,35 @@
+# ─── 操作系统 / 编辑器 ──────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
+
+# ─── Python ─────────────────────────────────────────
+__pycache__/
+*.pyc
+
+# ─── Vivado 工程生成物（可再生成，无需入库）──────────
+# 工程级目录
+**/project_1.cache/
+**/project_1.hw/
+**/project_1.runs/
+**/project_1.sim/
+**/project_1.gen/
+**/project_1.ip_user_files/
+**/.Xil/
+
+# 仿真/综合日志与中间文件
+*.jou
+*.log
+*.pb
+*.wdb
+*.wdf
+*.wpc
+*.sdb
+*.obj
+*.exe
+*.bak
+webtalk/
+xsim.dir/

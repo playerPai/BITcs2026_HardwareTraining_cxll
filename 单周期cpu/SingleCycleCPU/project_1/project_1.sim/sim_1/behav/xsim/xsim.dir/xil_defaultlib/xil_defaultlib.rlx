@@ -1,7 +1,0 @@
-0.6
-2019.2
-Nov  6 2019
-21:57:16
-C:/Users/ASUS/Desktop/北京理工大学/大四上/小学期/计租/单周期cpu/SingleCycleCPU/project_1/project_1.sim/sim_1/behav/xsim/glbl.v,1558713910,verilog,,,,glbl,,,,,,,,
-C:/Users/ASUS/Desktop/北京理工大学/大四上/小学期/计租/单周期cpu/SingleCycleCPU/project_1/project_1.srcs/sim_1/new/testbench.v,1788401607,verilog,,,,tb_cpu,,,,,,,,
-C:/Users/ASUS/Desktop/北京理工大学/大四上/小学期/计租/单周期cpu/SingleCycleCPU/project_1/project_1.srcs/sources_1/new/CPU.v,1788401739,verilog,,C:/Users/ASUS/Desktop/北京理工大学/大四上/小学期/计租/单周期cpu/SingleCycleCPU/project_1/project_1.srcs/sim_1/new/testbench.v,,alu;br_unit;cpu_top;ctrl;dmem;imem;imm_gen;pc_reg;regfile,,,,,,,,
