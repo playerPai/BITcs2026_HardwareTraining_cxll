@@ -1,0 +1,35 @@
++--------------------------+--------------------------+----------------------------------------------------------------------------------------------------------+
+|       Launch Clock       |      Capture Clock       |                                                 Pin                                                      |
++--------------------------+--------------------------+----------------------------------------------------------------------------------------------------------+
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][19]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][18]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][26]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][15]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][30]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][29]/D|
+|                  sys_clk |                  sys_clk |                                                                           cpu/u_regfile/regs_reg[31][1]/D|
+|                  sys_clk |                  sys_clk |                                                                           cpu/u_regfile/regs_reg[31][3]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][11]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][14]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][28]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][27]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][21]/D|
+|                  sys_clk |                  sys_clk |                                                                           cpu/u_regfile/regs_reg[31][8]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][17]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][12]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][13]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][23]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][22]/D|
+|                  sys_clk |                  sys_clk |                                                                                     cpu/u_pc/pc_reg[29]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][10]/D|
+|                  sys_clk |                  sys_clk |                                                                          cpu/u_regfile/regs_reg[31][25]/D|
+|                  sys_clk |                  sys_clk |                                                                           cpu/u_regfile/regs_reg[31][0]/D|
+|                  sys_clk |                  sys_clk |                                                                                     cpu/u_pc/pc_reg[28]/D|
+|                  sys_clk |                  sys_clk |                                                                                     cpu/u_pc/pc_reg[24]/D|
+|                  sys_clk |                  sys_clk |                                                                                     cpu/u_pc/pc_reg[16]/D|
+|                  sys_clk |                  sys_clk |                                                                                     cpu/u_pc/pc_reg[13]/D|
+|                  sys_clk |                  sys_clk |                                                                                      cpu/u_pc/pc_reg[9]/D|
+|                  sys_clk |                  sys_clk |                                                                                      cpu/u_pc/pc_reg[8]/D|
+|                  sys_clk |                  sys_clk |                                                                                      cpu/u_pc/pc_reg[5]/D|
+|                  sys_clk |                  sys_clk |                                                                                      cpu/u_pc/pc_reg[4]/D|
++--------------------------+--------------------------+----------------------------------------------------------------------------------------------------------+

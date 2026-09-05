@@ -1,0 +1,35 @@
+set_property PACKAGE_PIN T5 [get_ports I_clk]
+set_property PACKAGE_PIN P15 [get_ports I_rst_n]
+set_property IOSTANDARD LVCMOS33 [get_ports {I_clk I_rst_n}]
+create_clock -period 10.000 -name sys_clk [get_ports I_clk]
+
+# Right four digits: O_led[6:0] = abcdefg.
+set_property PACKAGE_PIN B2 [get_ports {O_led[0]}]
+set_property PACKAGE_PIN B3 [get_ports {O_led[1]}]
+set_property PACKAGE_PIN A1 [get_ports {O_led[2]}]
+set_property PACKAGE_PIN B1 [get_ports {O_led[3]}]
+set_property PACKAGE_PIN A3 [get_ports {O_led[4]}]
+set_property PACKAGE_PIN A4 [get_ports {O_led[5]}]
+set_property PACKAGE_PIN B4 [get_ports {O_led[6]}]
+
+# Left four digits: O_led_high[6:0] = abcdefg.
+set_property PACKAGE_PIN D2 [get_ports {O_led_high[0]}]
+set_property PACKAGE_PIN E2 [get_ports {O_led_high[1]}]
+set_property PACKAGE_PIN F3 [get_ports {O_led_high[2]}]
+set_property PACKAGE_PIN F4 [get_ports {O_led_high[3]}]
+set_property PACKAGE_PIN D3 [get_ports {O_led_high[4]}]
+set_property PACKAGE_PIN E3 [get_ports {O_led_high[5]}]
+set_property PACKAGE_PIN D4 [get_ports {O_led_high[6]}]
+
+# O_px[0] is the rightmost (units) digit.
+set_property PACKAGE_PIN G2 [get_ports {O_px[0]}]
+set_property PACKAGE_PIN C2 [get_ports {O_px[1]}]
+set_property PACKAGE_PIN C1 [get_ports {O_px[2]}]
+set_property PACKAGE_PIN H1 [get_ports {O_px[3]}]
+set_property PACKAGE_PIN G1 [get_ports {O_px[4]}]
+set_property PACKAGE_PIN F1 [get_ports {O_px[5]}]
+set_property PACKAGE_PIN E1 [get_ports {O_px[6]}]
+set_property PACKAGE_PIN G6 [get_ports {O_px[7]}]
+set_property PACKAGE_PIN D5 [get_ports {O_dp[0]}]
+set_property PACKAGE_PIN H2 [get_ports {O_dp[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {O_led[*] O_led_high[*] O_px[*] O_dp[*]}]
