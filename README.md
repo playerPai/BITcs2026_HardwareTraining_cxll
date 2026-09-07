@@ -2,7 +2,8 @@
 
 北京理工大学计算机学院 2023 级本科《硬件训练》课程项目（CXLL 团队：陈、徐、刘、吕）。
 
-当前仓库包含**单周期 CPU（RISC-V RV32I 子集，26 条指令）**的完整实现、5 个测试程序与行为级校验脚本。
+当前仓库包含**单周期 CPU** 与 **5 级流水线 CPU**（均为 RISC-V RV32I 子集，26 条指令）的完整实现、
+5 个测试程序与行为级校验脚本。
 组员克隆后即可在本地用 Vivado 复现全部仿真结果，无需安装额外工具。
 
 ## 目录结构
@@ -11,20 +12,28 @@
 BITcs2026_HardwareTraining_cxll/
 ├── README.md                          # 本文件：项目说明 + 快速复现
 ├── overall_scheme.docx                # 课程总体方案文档
-└── 单周期cpu/
-    ├── 指令集说明.md                   # 26 条指令的编码格式与语义定义
-    ├── 仿真步骤指南.md                 # 从零复现仿真的完整步骤（换测试程序 / 重新生成机器码 / 常见问题）
-    ├── SingleCycleCPU/
-    │   └── project_1/
-    │       ├── project_1.xpr          # Vivado 工程文件（打开即可运行仿真）
-    │       └── project_1.srcs/
-    │           ├── sources_1/new/     # CPU.v（单周期 CPU 实现）＋ CPU_8ins_backup.v（旧版备份）
-    │           └── sim_1/new/         # testbench.v（周期计数器 + 寄存器/内存打印）＋ inst26_test.mem
-    ├── 测试程序/
-    │   ├── 源代码/                    # 5 个 .asm 测试程序（头部注释含期望值）
-    │   └── 机器代码/                  # 与 .asm 一一对应的 .mem 机器码镜像
-    └── 工具/
-        └── verify_cpu.py              # 行为级校验脚本（Python 3）
+├── 单周期cpu/
+│   ├── 指令集说明.md                   # 26 条指令的编码格式与语义定义
+│   ├── 仿真步骤指南.md                 # 单周期从零复现的完整步骤
+│   ├── SingleCycleCPU/
+│   │   └── project_1/
+│   │       ├── project_1.xpr          # Vivado 工程文件（打开即可运行仿真）
+│   │       └── project_1.srcs/
+│   │           ├── sources_1/new/     # CPU.v（单周期 CPU 实现）＋ CPU_8ins_backup.v（旧版备份）
+│   │           └── sim_1/new/         # testbench.v（周期计数器 + 寄存器/内存打印）＋ inst26_test.mem
+│   ├── 测试程序/
+│   │   ├── 源代码/                    # 5 个 .asm 测试程序（头部注释含期望值）
+│   │   └── 机器代码/                  # 与 .asm 一一对应的 .mem 机器码镜像（单周期/流水线共用）
+│   └── 工具/
+│       └── verify_cpu.py              # 行为级校验脚本（Python 3）
+└── 流水线cpu/
+    ├── PipelineCPU.v                  # 5 级流水线 CPU 全部 RTL（GBK 注释）
+    ├── tb_pipeline.v                  # 流水线测试平台
+    ├── create_project.tcl             # 一键重建 Vivado 工程
+    ├── 切换测试程序_流水线.ps1          # 一键切换 5 个测试程序
+    ├── 流水线CPU说明.md                # 原理讲解 + 代码导读 + 使用说明
+    └── PipelineProject/
+        └── pipeline_cpu.xpr           # Vivado 工程文件（打开即可仿真）
 ```
 
 ## 环境要求
@@ -54,6 +63,35 @@ python 单周期cpu/工具/verify_cpu.py sort16.mem     # 只校验一个
 ```
 
 输出 `ALL PASS` 即 5 个测试程序在 CPU.v 的单周期语义下全部符合预期。
+
+## 流水线 CPU：复现与使用
+
+`流水线cpu/` 是五级流水线版本（IF/ID/EX/MEM/WB ＋ 前递 ＋ load-use 停顿 ＋ 分支冲刷），
+指令集与单周期完全一致，**5 个测试程序已全部仿真通过**。
+
+### 复现步骤
+
+1. 打开工程 `流水线cpu\PipelineProject\pipeline_cpu.xpr`
+   （打不开或想重建：在 `流水线cpu\` 目录下执行 `vivado -mode batch -source create_project.tcl`）
+2. `Flow Navigator → SIMULATION → Run Behavioral Simulation`，
+   默认只跑 1000ns 弹出波形，点 **Run All（F3）** 继续跑到结束
+3. Tcl 控制台自动打印总周期数、x0..x31、数据存储器——与
+   `流水线cpu\流水线CPU说明.md` 第 6.4 节核对表比对
+
+### 换测试程序
+
+```powershell
+cd 流水线cpu
+powershell -ExecutionPolicy Bypass -File .\切换测试程序_流水线.ps1 sort16   # 可选 inst26/raw/loaduse/branch/sort16
+```
+
+源 `.mem` 在 `单周期cpu\测试程序\机器代码\`（与单周期共用）；脚本会把它拷成仿真目录的 `inst.mem`。
+首次仿真若 imem 全为 x，先跑一次上面的切换脚本再重新仿真。
+
+### 原理与代码讲解
+
+看不懂流水线先读 `流水线cpu\流水线CPU说明.md`：为什么前递、什么是停顿与冲刷、
+每个模块怎么读、波形里该看什么信号，全在里面。
 
 ## 测试程序与基准
 

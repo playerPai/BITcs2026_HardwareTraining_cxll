@@ -33,3 +33,10 @@ __pycache__/
 *.bak
 webtalk/
 xsim.dir/
+# ── Vivado 生成物（通用规则，覆盖 pipeline_cpu.* 等任何工程名）──
+**/*.cache/
+**/*.hw/
+**/*.runs/
+**/*.sim/
+**/*.gen/
+**/*.ip_user_files/
