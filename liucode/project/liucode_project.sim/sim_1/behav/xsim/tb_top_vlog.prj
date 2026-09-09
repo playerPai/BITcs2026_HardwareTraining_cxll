@@ -2,6 +2,7 @@
 verilog xil_defaultlib  \
 "../../../../../rtl/LCD_controller.v" \
 "../../../../../rtl/RV32_CPU.v" \
+"../../../../../rtl/RV32_Pipeline.v" \
 "../../../../../rtl/top.v" \
 "../../../../../sim/tb_top.v" \
 

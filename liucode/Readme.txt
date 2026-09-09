@@ -1,4 +1,8 @@
-综合单周期CPU与下板代码
+综合单周期/五级流水线CPU与下板代码
 用vivado打开.xpr文件:project/liucode_project.xpr
+性能测试在sim/tb_cpu_performance.v的USER SETTING处切换single_cycle/pipeline
+仿真默认顶层为tb_cpu_performance；下板综合顶层必须为top
+tb_top用于仿真验证CPU到数码管的完整通路
+上板默认CPU为pipeline；可在rtl/top.v中切换CPU_TYPE
 需手动更换测试文件
 板上显示每个指令运行后得到的结果

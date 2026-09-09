@@ -14,6 +14,7 @@ module tb_top;
 
     top #(
         .IMEM_FILE("inst26_test.mem"),
+        .CPU_TYPE("pipeline"),
         .CPU_STEP_CYCLES(200),
         .SCAN_CYCLES(12)
     ) dut (

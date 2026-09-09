@@ -16,7 +16,8 @@ foreach mem_file [glob [file join $script_dir programs *.mem]] {
 
 add_files -fileset sim_1 -norecurse [glob [file join $script_dir sim *.v]]
 set_property top top [get_filesets sources_1]
-set_property top tb_top [get_filesets sim_1]
+set_property top tb_cpu_performance [get_filesets sim_1]
+set_property strategy Performance_Explore [get_runs impl_1]
 update_compile_order -fileset sources_1
 update_compile_order -fileset sim_1
 

@@ -2,6 +2,9 @@
 
 module top #(
     parameter IMEM_FILE = "inst26_test.mem",
+    // "pipeline" is the integrated board default; use "single_cycle" to
+    // synthesize the original core with the same display and pinout.
+    parameter CPU_TYPE = "pipeline",
     parameter integer CPU_STEP_CYCLES = 100000000,
     parameter integer SCAN_CYCLES = 100000
 )(
@@ -38,10 +41,25 @@ module top #(
             cpu_step_counter <= cpu_step_counter + 1'b1;
     end
 
-    RV32_CPU #(.IMEM_FILE(IMEM_FILE)) cpu (
-        .clk(I_clk), .reset(!reset_n), .enable(cpu_enable),
-        .x31_out(x31_value)
-    );
+    generate
+        if (CPU_TYPE == "pipeline") begin : gen_pipeline_cpu
+            wire retire_valid_unused;
+            wire [31:0] retire_pc_unused;
+            wire [31:0] retire_instr_unused;
+            RV32_Pipeline #(.IMEM_FILE(IMEM_FILE)) cpu (
+                .clk(I_clk), .reset(!reset_n), .enable(cpu_enable),
+                .x31_out(x31_value),
+                .retire_valid(retire_valid_unused),
+                .retire_pc(retire_pc_unused),
+                .retire_instr(retire_instr_unused)
+            );
+        end else begin : gen_single_cycle_cpu
+            RV32_CPU #(.IMEM_FILE(IMEM_FILE)) cpu (
+                .clk(I_clk), .reset(!reset_n), .enable(cpu_enable),
+                .x31_out(x31_value)
+            );
+        end
+    endgenerate
 
     LCD_controller #(.SCAN_CYCLES(SCAN_CYCLES)) lcd (
         .I_clk(I_clk), .I_rst_n(reset_n), .I_data(x31_value),

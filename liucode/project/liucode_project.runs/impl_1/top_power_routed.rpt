@@ -1,7 +1,7 @@
 Copyright 1986-2019 Xilinx, Inc. All Rights Reserved.
 -------------------------------------------------------------------------------------------------------------------------------
 | Tool Version     : Vivado v.2019.2 (win64) Build 2708876 Wed Nov  6 21:40:23 MST 2019
-| Date             : Sat Sep  5 10:34:44 2026
+| Date             : Tue Sep  8 15:24:14 2026
 | Host             : liuxinhao running 64-bit major release  (build 9200)
 | Command          : report_power -file top_power_routed.rpt -pb top_power_summary_routed.pb -rpx top_power_routed.rpx
 | Design           : top
@@ -30,10 +30,10 @@ Table of Contents
 ----------
 
 +--------------------------+--------------+
-| Total On-Chip Power (W)  | 0.076        |
+| Total On-Chip Power (W)  | 0.082        |
 | Design Power Budget (W)  | Unspecified* |
 | Power Budget Margin (W)  | NA           |
-| Dynamic (W)              | 0.005        |
+| Dynamic (W)              | 0.010        |
 | Device Static (W)        | 0.072        |
 | Effective TJA (C/W)      | 4.8          |
 | Max Ambient (C)          | 84.6         |
@@ -52,18 +52,18 @@ Table of Contents
 +--------------------------+-----------+----------+-----------+-----------------+
 | On-Chip                  | Power (W) | Used     | Available | Utilization (%) |
 +--------------------------+-----------+----------+-----------+-----------------+
-| Clocks                   |     0.004 |        3 |       --- |             --- |
-| Slice Logic              |    <0.001 |     3900 |       --- |             --- |
-|   LUT as Logic           |    <0.001 |     1731 |     20800 |            8.32 |
-|   CARRY4                 |    <0.001 |       65 |      8150 |            0.80 |
-|   Register               |    <0.001 |     1230 |     41600 |            2.96 |
-|   F7/F8 Muxes            |    <0.001 |      490 |     32600 |            1.50 |
+| Clocks                   |     0.005 |        3 |       --- |             --- |
+| Slice Logic              |     0.003 |     4640 |       --- |             --- |
+|   LUT as Logic           |     0.002 |     1824 |     20800 |            8.77 |
+|   CARRY4                 |    <0.001 |       73 |      8150 |            0.90 |
 |   LUT as Distributed RAM |    <0.001 |      256 |      9600 |            2.67 |
-|   Others                 |     0.000 |       11 |       --- |             --- |
-| Signals                  |    <0.001 |     2644 |       --- |             --- |
+|   F7/F8 Muxes            |    <0.001 |      484 |     32600 |            1.48 |
+|   Register               |    <0.001 |     1754 |     41600 |            4.22 |
+|   Others                 |     0.000 |        9 |       --- |             --- |
+| Signals                  |     0.003 |     3072 |       --- |             --- |
 | I/O                      |    <0.001 |       26 |       210 |           12.38 |
 | Static Power             |     0.072 |          |           |                 |
-| Total                    |     0.076 |          |           |                 |
+| Total                    |     0.082 |          |           |                 |
 +--------------------------+-----------+----------+-----------+-----------------+
 
 
@@ -73,7 +73,7 @@ Table of Contents
 +-----------+-------------+-----------+-------------+------------+
 | Source    | Voltage (V) | Total (A) | Dynamic (A) | Static (A) |
 +-----------+-------------+-----------+-------------+------------+
-| Vccint    |       1.000 |     0.014 |       0.005 |      0.010 |
+| Vccint    |       1.000 |     0.020 |       0.010 |      0.010 |
 | Vccaux    |       1.800 |     0.013 |       0.000 |      0.013 |
 | Vcco33    |       3.300 |     0.001 |       0.000 |      0.001 |
 | Vcco25    |       2.500 |     0.000 |       0.000 |      0.000 |
@@ -139,12 +139,15 @@ Table of Contents
 3.1 By Hierarchy
 ----------------
 
-+---------------+-----------+
-| Name          | Power (W) |
-+---------------+-----------+
-| top           |     0.005 |
-|   cpu         |     0.003 |
-|     u_regfile |     0.002 |
-+---------------+-----------+
++------------------------+-----------+
+| Name                   | Power (W) |
++------------------------+-----------+
+| top                    |     0.010 |
+|   gen_pipeline_cpu.cpu |     0.008 |
+|     u_ex_mem           |     0.002 |
+|     u_id_ex            |     0.002 |
+|     u_regfile          |     0.002 |
+|   lcd                  |     0.002 |
++------------------------+-----------+
 
 
