@@ -37,7 +37,8 @@ module tb_overflow_sc;
         .clk(clk), .reset(reset), .enable(enable),
         .x31_out(x31_out),
         .retire_ovf(retire_ovf),
-        .ovf_out(ovf_out)
+        .ovf_out(ovf_out),
+        .int_req(1'b0), .int_en(1'b0), .mepc_out()
     );
 
     always #5 clk = ~clk;   // 100 MHz

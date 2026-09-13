@@ -50,7 +50,9 @@ module RV32_Pipeline #(
     reg  [31:0] mepc;                 // 中断返回地址（mret 时 PC <- mepc）
     reg         in_isr;               // 中断服务中标志（屏蔽嵌套中断）
     reg         valid_d;              // 提前声明（中断流水线的有效位，见退休跟踪段）
-    wire        int_pending = int_en && int_req && !in_isr && enable && !stall && !ex_redirect;
+    // 全等比较：旧例化点若未连接该端口（悬空 z），视为“无中断请求”，避免 x 传播
+    wire        int_pending = (int_en === 1'b1) && (int_req === 1'b1) &&
+                              !in_isr && enable && !stall && !ex_redirect;
     // mret（0x30200073，RISC-V 标准 M 模式返回）：在 ID 级识别，直接重定向回 mepc
     wire        mret_pending = valid_d && (instr_d == 32'h30200073);
     assign mepc_out = mepc;

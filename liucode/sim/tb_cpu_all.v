@@ -13,19 +13,24 @@ module tb_cpu_all;
     always #5 clk = ~clk;
 
     RV32_CPU #(.IMEM_FILE("inst26_test.mem")) cpu_inst26 (
-        .clk(clk), .reset(reset), .enable(1'b1), .x31_out(out_inst26)
+        .clk(clk), .reset(reset), .enable(1'b1), .x31_out(out_inst26),
+        .int_req(1'b0), .int_en(1'b0), .mepc_out()
     );
     RV32_CPU #(.IMEM_FILE("raw_test.mem")) cpu_raw (
-        .clk(clk), .reset(reset), .enable(1'b1), .x31_out(out_raw)
+        .clk(clk), .reset(reset), .enable(1'b1), .x31_out(out_raw),
+        .int_req(1'b0), .int_en(1'b0), .mepc_out()
     );
     RV32_CPU #(.IMEM_FILE("loaduse_test.mem")) cpu_loaduse (
-        .clk(clk), .reset(reset), .enable(1'b1), .x31_out(out_loaduse)
+        .clk(clk), .reset(reset), .enable(1'b1), .x31_out(out_loaduse),
+        .int_req(1'b0), .int_en(1'b0), .mepc_out()
     );
     RV32_CPU #(.IMEM_FILE("branch_test.mem")) cpu_branch (
-        .clk(clk), .reset(reset), .enable(1'b1), .x31_out(out_branch)
+        .clk(clk), .reset(reset), .enable(1'b1), .x31_out(out_branch),
+        .int_req(1'b0), .int_en(1'b0), .mepc_out()
     );
     RV32_CPU #(.IMEM_FILE("sort16.mem")) cpu_sort (
-        .clk(clk), .reset(reset), .enable(1'b1), .x31_out(out_sort)
+        .clk(clk), .reset(reset), .enable(1'b1), .x31_out(out_sort),
+        .int_req(1'b0), .int_en(1'b0), .mepc_out()
     );
 
     initial begin

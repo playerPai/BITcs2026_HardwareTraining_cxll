@@ -51,12 +51,14 @@ module top #(
                 .x31_out(x31_value),
                 .retire_valid(retire_valid_unused),
                 .retire_pc(retire_pc_unused),
-                .retire_instr(retire_instr_unused)
+                .retire_instr(retire_instr_unused),
+                .int_req(1'b0), .int_en(1'b0), .mepc_out()
             );
         end else begin : gen_single_cycle_cpu
             RV32_CPU #(.IMEM_FILE(IMEM_FILE)) cpu (
                 .clk(I_clk), .reset(!reset_n), .enable(cpu_enable),
-                .x31_out(x31_value)
+                .x31_out(x31_value),
+                .int_req(1'b0), .int_en(1'b0), .mepc_out()
             );
         end
     endgenerate

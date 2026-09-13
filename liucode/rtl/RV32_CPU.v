@@ -112,7 +112,8 @@ module RV32_CPU #(
     reg  [31:0] mepc;
     reg         in_isr;
     assign mepc_out = mepc;
-    wire int_taken  = int_en && int_req && !in_isr && enable;
+    // 全等比较：旧例化点若未连接该端口（悬空 z），视为“无中断请求”，避免 x 传播
+    wire int_taken  = (int_en === 1'b1) && (int_req === 1'b1) && !in_isr && enable;
     wire mret_taken = (instr == 32'h30200073) && enable && !int_taken;
 
     always @(posedge clk or posedge reset) begin

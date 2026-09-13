@@ -31,12 +31,14 @@ module perf_rv32_cpu_adapter #(
                 .x31_out(result),
                 .retire_valid(retire_valid),
                 .retire_pc(retire_pc),
-                .retire_instr(retire_instr)
+                .retire_instr(retire_instr),
+                .int_req(1'b0), .int_en(1'b0), .mepc_out()
             );
         end else begin : gen_single_cycle
             RV32_CPU #(.IMEM_FILE(IMEM_FILE)) u_cpu (
                 .clk(clk), .reset(reset), .enable(enable),
-                .x31_out(result)
+                .x31_out(result),
+                .int_req(1'b0), .int_en(1'b0), .mepc_out()
             );
             assign retire_valid = enable && !reset;
             assign retire_pc    = u_cpu.pc;
