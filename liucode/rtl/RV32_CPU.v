@@ -6,12 +6,20 @@
 // addi/ori/andi/xori/slti/slli/srli/srai,
 // lw/sw/lui, beq/bne/blt/bge, jal/jalr.
 module RV32_CPU #(
-    parameter IMEM_FILE = "inst26_test.mem"
+    parameter IMEM_FILE = "inst26_test.mem",
+    parameter INT_VECTOR = 32'h00000040   // 中断向量地址（附加功能）
 )(
     input  wire        clk,
     input  wire        reset,
     input  wire        enable,
-    output wire [31:0] x31_out
+    output wire [31:0] x31_out,
+    // 附加功能：溢出判断（与流水线 RV32_Pipeline 接口一致）
+    output wire        retire_ovf,  // 与 enable 同步，本条指令（当前周期）是否溢出
+    output reg         ovf_out,     // 粘性溢出标志：曾发生过溢出即保持 1，直到复位
+    // 附加功能：中断（与流水线 RV32_Pipeline 接口一致）
+    input  wire        int_req,     // 中断请求（电平，由外部拉高）
+    input  wire        int_en,      // 全局中断使能
+    output wire [31:0] mepc_out     // 中断返回地址（调试/观察用）
 );
     wire [31:0] instr;
     wire [31:0] pc;
@@ -64,20 +72,22 @@ module RV32_CPU #(
     );
 
     regfile u_regfile (
-        .clk(clk), .rst(reset), .en(enable), .we(reg_we),
+        .clk(clk), .rst(reset), .en(enable), .we(reg_we_eff),
         .ra1(rs1), .ra2(rs2), .rd1(rd1), .rd2(rd2),
         .wd(wb_data), .wa(rd),
-        .display_we(display_we), .display_data(instruction_result),
+        .display_we(display_we_eff), .display_data(instruction_result),
         .x31_out(x31_out)
     );
 
     assign alu_b = alu_src ? imm : rd2;
+    wire alu_ovf;   // 附加功能：ALU 有符号溢出标志
     alu u_alu (
-        .a(rd1), .b(alu_b), .alu_op(alu_op), .y(alu_y)
+        .a(rd1), .b(alu_b), .alu_op(alu_op), .y(alu_y),
+        .ovf(alu_ovf)
     );
 
     dmem u_dmem (
-        .clk(clk), .addr(alu_y), .we(dmem_we & ~reset & enable),
+        .clk(clk), .addr(alu_y), .we(dmem_we_eff & ~reset & enable),
         .rdata(dmem_rdata), .wdata(rd2)
     );
 
@@ -93,8 +103,41 @@ module RV32_CPU #(
     // JAL target is PC-relative. JALR target is (rs1 + imm) with bit 0 clear.
     assign jmp_addr = (instr[6:0] == 7'b1101111)
                     ? (pc + j_off) : (alu_y & 32'hfffffffe);
-    assign pc_next = take_branch ? (pc + br_off)
-                   : jump       ? jmp_addr
+
+    // ---------------- 附加功能：中断 ----------------
+    // 与流水线版语义一致：
+    //   - 中断在"指令边界"被识别：int_taken 时本周期指令作废（不写回），
+    //     mepc 保存其地址，PC 下一拍跳 INT_VECTOR；返回后重新执行被推迟的指令；
+    //   - in_isr 屏蔽嵌套中断；RISC-V 标准 mret（0x30200073）恢复：PC<-mepc，清 in_isr。
+    reg  [31:0] mepc;
+    reg         in_isr;
+    assign mepc_out = mepc;
+    wire int_taken  = int_en && int_req && !in_isr && enable;
+    wire mret_taken = (instr == 32'h30200073) && enable && !int_taken;
+
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            mepc   <= 32'b0;
+            in_isr <= 1'b0;
+        end else if (enable) begin
+            if (int_taken) begin
+                mepc   <= pc;
+                in_isr <= 1'b1;
+            end else if (mret_taken) begin
+                in_isr <= 1'b0;
+            end
+        end
+    end
+
+    // 中断作废当前指令：写回与访存都抑制（返回后重执行）
+    assign reg_we_eff   = reg_we   && !int_taken;
+    assign dmem_we_eff  = dmem_we  && !int_taken;
+    assign display_we_eff = display_we && !int_taken && !mret_taken;
+
+    assign pc_next = int_taken  ? INT_VECTOR :
+                     mret_taken ? mepc :
+                     take_branch ? (pc + br_off)
+                     : jump     ? jmp_addr
                                 : pc_plus4;
 
     // x31 is reserved as an instruction-result monitor for the board display.
@@ -121,6 +164,21 @@ module RV32_CPU #(
         endcase
         if (instr == 32'h00000063)
             display_we = 1'b0;
+    end
+
+    // 附加功能：溢出判断（与流水线 RV32_Pipeline 语义一致）
+    // 1) ALU 的 ovf 检测对任何 ALU_ADD/ALU_SUB 都给出结果；但只有指令写回
+    //    ALU 结果且写寄存器（reg_we 且 wb_sel=00，即 add/sub/addi）才算算术溢出；
+    //    lw/sw 的地址加法按无符号地址处理，不算溢出。
+    wire ovf_legit = alu_ovf && reg_we && (wb_sel == 2'b00);
+    // 2) retire_ovf：与 enable 同步（单周期每条有效指令一拍完成）
+    assign retire_ovf = enable && ovf_legit;
+    // 3) ovf_out：粘性标志，一旦发生过溢出即保持 1，直到复位
+    always @(posedge clk or posedge reset) begin
+        if (reset)
+            ovf_out <= 1'b0;
+        else if (enable && ovf_legit)
+            ovf_out <= 1'b1;
     end
 endmodule
 
@@ -215,7 +273,8 @@ module alu(
     input wire [3:0] alu_op,
     input wire [31:0] a,
     input wire [31:0] b,
-    output reg [31:0] y
+    output reg [31:0] y,
+    output reg        ovf    // 有符号溢出标志：加法/减法检测（与流水线 pipe_alu 一致）
 );
     localparam ALU_ADD = 4'b0000;
     localparam ALU_SLL = 4'b0001;
@@ -227,9 +286,18 @@ module alu(
     localparam ALU_SUB = 4'b1000;
     localparam ALU_SRA = 4'b1101;
     always @(*) begin
+        ovf = 1'b0;
         case (alu_op)
-            ALU_ADD: y = a + b;
-            ALU_SUB: y = a - b;
+            ALU_ADD: begin
+                y   = a + b;
+                // 有符号加法溢出：两个操作数同号，结果与之异号
+                ovf = ~(a[31] ^ b[31]) & (a[31] ^ y[31]);
+            end
+            ALU_SUB: begin
+                y   = a - b;
+                // 有符号减法溢出：两个操作数异号，结果与 a 异号
+                ovf = (a[31] ^ b[31]) & (a[31] ^ y[31]);
+            end
             ALU_SLL: y = a << b[4:0];
             ALU_SLT: y = ($signed(a) < $signed(b)) ? 32'd1 : 32'd0;
             ALU_XOR: y = a ^ b;

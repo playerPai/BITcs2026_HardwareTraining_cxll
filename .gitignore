@@ -1,4 +1,4 @@
-# ─── 操作系统 / 编辑器 ──────────────────────────────
+# ─── 操作系统 / 编辑�?──────────────────────────────
 .DS_Store
 Thumbs.db
 Desktop.ini
@@ -11,7 +11,7 @@ __pycache__/
 *.pyc
 
 # ─── Vivado 工程生成物（可再生成，无需入库）──────────
-# 工程级目录
+# 工程级目�?
 **/project_1.cache/
 **/project_1.hw/
 **/project_1.runs/
@@ -20,7 +20,7 @@ __pycache__/
 **/project_1.ip_user_files/
 **/.Xil/
 
-# 仿真/综合日志与中间文件
+# 仿真/综合日志与中间文�?
 *.jou
 *.log
 *.pb
@@ -33,10 +33,13 @@ __pycache__/
 *.bak
 webtalk/
 xsim.dir/
-# ── Vivado 生成物（通用规则，覆盖 pipeline_cpu.* 等任何工程名）──
+# ── Vivado 生成物（通用规则，覆�?pipeline_cpu.* 等任何工程名）──
 **/*.cache/
 **/*.hw/
 **/*.runs/
 **/*.sim/
 **/*.gen/
 **/*.ip_user_files/
+
+# liucode Vivado xpr (machine-local path; rebuild via create_project.tcl)
+liucode/project/liucode_project.xpr

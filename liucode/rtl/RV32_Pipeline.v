@@ -17,7 +17,8 @@
 // 工程统一接口：与单周期 RV32_CPU 使用相同的参数和板级端口，并额外
 // 暴露退休级信息，供 tb_cpu_performance 准确区分有效指令、停顿和气泡。
 module RV32_Pipeline #(
-    parameter IMEM_FILE = "inst26_test.mem"
+    parameter IMEM_FILE = "inst26_test.mem",
+    parameter INT_VECTOR = 32'h00000040   // 中断向量地址（附加功能）
 )(
     input  wire        clk,
     input  wire        reset,
@@ -25,17 +26,37 @@ module RV32_Pipeline #(
     output reg  [31:0] x31_out,
     output wire        retire_valid,
     output wire [31:0] retire_pc,
-    output wire [31:0] retire_instr
+    output wire [31:0] retire_instr,
+    // 附加功能：溢出判断
+    output wire        retire_ovf,  // 与 retire_valid 同步，本条退休指令是否溢出
+    output reg         ovf_out,     // 粘性溢出标志：曾发生过溢出即保持 1，直到复位
+    // 附加功能：中断
+    input  wire        int_req,     // 中断请求（电平，由外部拉高）
+    input  wire        int_en,      // 全局中断使能
+    output wire [31:0] mepc_out     // 中断返回地址（调试/观察用）
     );
     // ---------------- 取指 IF ----------------
     wire [31:0] pc_f;                 // 当前取指地址
     wire [31:0] pc_plus4_f = pc_f + 32'd4;
     wire [31:0] instr_f;              // 指令存储器取出的指令
+    wire [31:0] pc_d;                 // IF/ID 输出（提前声明，供中断逻辑引用）
+    wire [31:0] instr_d;              // IF/ID 输出（提前声明，供中断逻辑引用）
     wire        ex_redirect;          // EX 级要求重定向 PC（分支 taken / jal / jalr）
     wire [31:0] ex_target;            // 重定向目标地址
     wire        stall;                // load-use 停顿标志
     wire        pc_en = enable && ~stall; // 板级步进关闭或冒险停顿时冻结 PC
-    wire [31:0] pc_next = ex_redirect ? ex_target : pc_plus4_f;
+    // 附加功能：中断。中断在 ID 级检测（int_pending），把 PC 重定向到中断向量
+    // INT_VECTOR，同时把返回地址记入 mepc（返回后重执行被推迟的那条指令）。
+    reg  [31:0] mepc;                 // 中断返回地址（mret 时 PC <- mepc）
+    reg         in_isr;               // 中断服务中标志（屏蔽嵌套中断）
+    reg         valid_d;              // 提前声明（中断流水线的有效位，见退休跟踪段）
+    wire        int_pending = int_en && int_req && !in_isr && enable && !stall && !ex_redirect;
+    // mret（0x30200073，RISC-V 标准 M 模式返回）：在 ID 级识别，直接重定向回 mepc
+    wire        mret_pending = valid_d && (instr_d == 32'h30200073);
+    assign mepc_out = mepc;
+    wire [31:0] pc_next = int_pending ? INT_VECTOR :
+                          mret_pending ? mepc :
+                          (ex_redirect ? ex_target : pc_plus4_f);
 
     // 跨级连线（统一提前声明，供各流水段实例引用）
     wire [31:0] pc4_d;                    // ID 段的 PC+4
@@ -59,11 +80,9 @@ module RV32_Pipeline #(
     );
 
     // ---------------- IF/ID 流水寄存器 ----------------
-    wire [31:0] pc_d;
-    wire [31:0] instr_d;
     pipe_if_id_reg u_if_id(
         .clk(clk), .rst(reset), .enable(enable),
-        .flush(ex_redirect),          // 冲刷：注入 NOP
+        .flush(ex_redirect || int_pending || mret_pending),  // 冲刷：注入 NOP
         .stall(stall),                // 停顿：保持原值
         .pc_in(pc_f),  .instr_in(instr_f),
         .pc_out(pc_d), .instr_out(instr_d)
@@ -108,7 +127,7 @@ module RV32_Pipeline #(
     wire [3:0]  alu_op_e;
     pipe_id_ex_reg u_id_ex(
         .clk(clk), .rst(reset), .enable(enable),
-        .flush(ex_redirect || stall),   // 冲刷或停顿都注入气泡（控制信号清零）
+        .flush(ex_redirect || stall || int_pending || mret_pending),   // 冲刷或停顿都注入气泡（控制信号清零）
         // 透传数据
         .pc_in(pc_d),      .pc_out(pc_e),
         .pc4_in(pc4_d),    .pc4_out(pc4_e),
@@ -146,10 +165,12 @@ module RV32_Pipeline #(
 
     wire [31:0] alu_b = alu_src_e ? imm_e : fwd_b;   // I 型/S 型/lw/sw 用立即数
     wire [31:0] alu_y_e;
+    wire        alu_ovf_e;   // 附加功能：EX 级 ALU 有符号溢出标志
     pipe_alu u_alu(
         .alu_op(alu_op_e),
         .a(fwd_a), .b(alu_b),
-        .y(alu_y_e)
+        .y(alu_y_e),
+        .ovf(alu_ovf_e)
     );
 
     // 分支条件判断：操作数用前递后的值（紧随其后的相关分支也能正确判断）
@@ -177,6 +198,11 @@ module RV32_Pipeline #(
     // （lw 的数据要 MEM 级之后才有；load-use 停顿保证它不会从 EX/MEM 被前递）
     wire [31:0] ex_wb_val = (wb_sel_e == 2'b11) ? imm_e :
                             (wb_sel_e == 2'b10) ? pc4_e : alu_y_e;
+
+    // 附加功能：ALU 的 ovf 检测对任何 ALU_ADD/ALU_SUB 运算都会给出结果。
+    // 但只有"算术指令写回 ALU 结果"时（add/sub/addi，即 reg_we 且 wb_sel=00）
+    // 溢出标志才有 ISA 语义；lw/sw 的地址加法（无符号地址）不算溢出。
+    wire ovf_e = alu_ovf_e && reg_we_e && (wb_sel_e == 2'b00);
 
     // ---------------- EX/MEM 流水寄存器 ----------------
     pipe_ex_mem_reg u_ex_mem(
@@ -226,16 +252,19 @@ module RV32_Pipeline #(
     // ---------------- 退休跟踪与板级显示 ----------------
     // 原始流水线没有有效位；仅靠 NOP 无法区分真实 NOP 与停顿/冲刷气泡。
     // 这里单独流水化 valid、PC 和 instruction，不改变原数据通路。
-    reg        valid_d, valid_e, valid_m, valid_w;
+    reg        valid_e, valid_m, valid_w;
     reg [31:0] instr_e, instr_m, instr_w;
     reg [31:0] pc_m, pc_w;
     reg [31:0] monitor_value_m, monitor_value_w;
     reg        monitor_we_m, monitor_we_w;
     reg        monitor_use_wb_m, monitor_use_wb_w;
+    // 附加功能：溢出标志随有效位逐级流水（ovf_m / ovf_w）
+    reg        ovf_m, ovf_w;
 
     reg [31:0] monitor_value_e;
     reg        monitor_we_e;
     reg        monitor_use_wb_e;
+    reg        ovf_e_buf;
 
     always @(*) begin
         monitor_value_e  = 32'b0;
@@ -279,15 +308,28 @@ module RV32_Pipeline #(
             monitor_we_w <= 1'b0;
             monitor_use_wb_m <= 1'b0;
             monitor_use_wb_w <= 1'b0;
+            ovf_m <= 1'b0;
+            ovf_w <= 1'b0;
+            mepc <= 32'b0;
+            in_isr <= 1'b0;
             x31_out <= 32'b0;
         end else if (enable) begin
-            if (ex_redirect) begin
+            // 附加功能：中断响应。mepc 保存被推迟指令的地址（返回后重执行），
+            // 同时置 in_isr 屏蔽嵌套；mret 执行时清除 in_isr 恢复可中断。
+            if (int_pending) begin
+                mepc   <= pc_d;
+                in_isr <= 1'b1;
+            end else if (mret_pending) begin
+                in_isr <= 1'b0;
+            end
+
+            if (ex_redirect || int_pending || mret_pending) begin
                 valid_d <= 1'b0;
             end else if (!stall) begin
                 valid_d <= 1'b1;
             end
 
-            if (ex_redirect || stall) begin
+            if (ex_redirect || stall || int_pending || mret_pending) begin
                 valid_e <= 1'b0;
                 instr_e <= 32'h00000013;
             end else begin
@@ -301,6 +343,7 @@ module RV32_Pipeline #(
             monitor_value_m <= monitor_value_e;
             monitor_we_m <= monitor_we_e;
             monitor_use_wb_m <= monitor_use_wb_e;
+            ovf_m <= ovf_e_buf;
 
             valid_w <= valid_m;
             instr_w <= instr_m;
@@ -308,15 +351,33 @@ module RV32_Pipeline #(
             monitor_value_w <= monitor_value_m;
             monitor_we_w <= monitor_we_m;
             monitor_use_wb_w <= monitor_use_wb_m;
+            ovf_w <= ovf_m;
 
             if (valid_w && monitor_we_w)
                 x31_out <= monitor_use_wb_w ? wb_data : monitor_value_w;
         end
     end
 
+    // 附加功能：溢出标志与 EX 级有效位同步（气泡/冲刷时无效）
+    always @(*) begin
+        if (ex_redirect || stall || int_pending || mret_pending)
+            ovf_e_buf = 1'b0;
+        else
+            ovf_e_buf = valid_d && ovf_e;
+    end
+
     assign retire_valid = enable && valid_w;
     assign retire_pc    = pc_w;
     assign retire_instr = instr_w;
+    // 附加功能：本条退休指令是否溢出（与 retire_valid 同拍有效）
+    assign retire_ovf = enable && valid_w && ovf_w;
+    // 附加功能：粘性溢出标志 ---- 一旦发生过溢出就保持 1，直到复位
+    always @(posedge clk or posedge reset) begin
+        if (reset)
+            ovf_out <= 1'b0;
+        else if (enable && retire_ovf)
+            ovf_out <= 1'b1;
+    end
 
 endmodule
 
@@ -412,7 +473,8 @@ module pipe_alu(
     input wire [3:0] alu_op,
     input wire [31:0] a,
     input wire [31:0] b,
-    output reg [31:0] y
+    output reg [31:0] y,
+    output reg        ovf    // 有符号溢出标志：加法/减法检测
     );
     localparam ALU_ADD = 4'b0000;
     localparam ALU_SLL = 4'b0001;
@@ -424,9 +486,18 @@ module pipe_alu(
     localparam ALU_SUB = 4'b1000;
     localparam ALU_SRA = 4'b1101;
     always @(*) begin
+        ovf = 1'b0;
         case (alu_op)
-            ALU_ADD: y = a + b;
-            ALU_SUB: y = a - b;
+            ALU_ADD: begin
+                y   = a + b;
+                // 有符号加法溢出：两个操作数同号，结果与之异号
+                ovf = ~(a[31] ^ b[31]) & (a[31] ^ y[31]);
+            end
+            ALU_SUB: begin
+                y   = a - b;
+                // 有符号减法溢出：两个操作数异号，结果与 a 异号
+                ovf = (a[31] ^ b[31]) & (a[31] ^ y[31]);
+            end
             ALU_SLL: y = a << b[4:0];
             ALU_SLT: y = ($signed(a) < $signed(b)) ? 32'd1 : 32'd0;
             ALU_XOR: y = a ^ b;
