@@ -1,6 +1,9 @@
 # Single-cycle / pipelined CPU board project
 
-本目录将 26 条指令的单周期 CPU 与五级流水线 CPU、五套测试程序，以及已验证的 EES-338 管脚和八位七段数码管控制器整合在同一个 Vivado 工程中。原单周期 RTL 保持不变；流水线实现使用独立的 `pipe_*` 模块名，不会与单周期内部模块冲突。
+本目录将 26 条指令的单周期 CPU 与五级流水线 CPU、五套测试程序、
+MMIO UART 外设，以及已验证的 EES-338 管脚和八位七段数码管控制器
+整合在同一个 Vivado 工程中。原单周期 RTL 保持不变；流水线实现使用
+独立的 `pipe_*` 模块名，不会与单周期内部模块冲突。
 
 ## Layout
 
@@ -8,19 +11,87 @@
 | --- | --- |
 | `rtl/RV32_CPU.v` | 新单周期 CPU，保留 `x31` 作为逐指令结果监视器 |
 | `rtl/RV32_Pipeline.v` | 五级流水线 CPU，含前递、load-use 停顿、控制冲刷、退休接口和板级步进使能 |
-| `rtl/top.v` | CPU 与八位数码管的下板顶层，通过 `CPU_TYPE` 选择 CPU |
-| `rtl/LCD_controller.v` | 已验证的 32 位无符号十进制显示控制器 |
-| `constraints/ees338.xdc` | 已验证的 100 MHz 时钟、复位、段选和位选管脚 |
+| `rtl/top.v` | 流水线 CPU、MMIO UART 与八位数码管的 SoC 下板顶层 |
+| `rtl/uart_mmio.v` | 115200/8N1 UART 收发器及 MMIO 寄存器 |
+| `rtl/display_sequence_mmio.v` | 数码管显示队列：先显示数量，再循环显示排序结果 |
+| `rtl/LCD_controller.v` | 八位七段数码管控制器（历史文件名，并非液晶屏） |
+| `constraints/ees338.xdc` | 100 MHz 时钟、复位、数码管及 UART 管脚 |
 | `programs/*.asm` | 测试程序源代码，完全不使用保留的 `x31` |
 | `programs/*.mem` | 用 RARS 1.6 重新生成的机器码 |
 | `sim/tb_cpu_all.v` | 五套程序并行自检 |
 | `sim/tb_cpu_performance.v` | 单周期/流水线的周期数、IC、CPI 与 CPU 时间对比 |
 | `sim/tb_top.v` | CPU 到八位数码管的端到端自检 |
+| `sim/tb_uart_mmio.v` | UART IP 收发、状态与错误标志自动比对 |
+| `sim/tb_cpu_uart.v` | 电脑串口到 CPU 排序再返回串口的端到端自动比对 |
+| `programs/uart_sort_demo.asm` | UART 接收空格分隔的多位数并排序返回的汇编程序 |
 | `create_project.tcl` | 创建独立 Vivado 2019.2 工程 |
+
+## UART integrated demonstration
+
+最终下板顶层默认使用流水线 CPU、100 MHz 主时钟、115200 波特率、
+8 数据位、无校验、1 停止位。EES-338 串口管脚为：
+
+| Signal | Direction | FPGA pin |
+| --- | --- | --- |
+| `I_rs232_rxd` | PC/USB-UART -> FPGA | N5 |
+| `O_rs232_txd` | FPGA -> PC/USB-UART | T4 |
+
+UART 使用如下存储器映射：
+
+| Address | Access | Meaning |
+| --- | --- | --- |
+| `0x40000000` | W | TXDATA，低 8 位写入发送器 |
+| `0x40000004` | R | RXDATA，读取后清除 RX_VALID |
+| `0x40000008` | R | STATUS：RX_VALID、TX_READY、TX_BUSY 和错误标志 |
+| `0x4000000c` | W | CONTROL：bit0 清除粘滞错误标志 |
+| `0x40000010` | W | DISPLAY_CONTROL：bit0 清队列，bit1 开始轮播 |
+| `0x40000014` | W | DISPLAY_DATA：向显示队列追加一个数值 |
+
+打开串口助手后按 S8 复位，终端首先收到：
+
+```text
+READY
+```
+
+以文本方式输入最多 16 个非负整数，用空格分隔，并以 CR 或 LF 结束：
+
+```text
+12 3 105 1
+```
+
+流水线 CPU 通过 MMIO 接收字符，在数据 RAM 中执行冒泡排序并返回：
+
+```text
+COUNT:4
+SORTED:1 3 12 105
+```
+
+允许连续空格；支持的演示数值范围为 `0..99999999`。完成后数码管先显示
+数量 `4`，再依次显示 `1`、`3`、`12`、`105`，随后循环播放。默认每项
+停留 1 秒。UART 演示必须保持
+`CPU_STEP_CYCLES=1`，否则慢速演示使能会来不及接收连续串口数据。
+
+等待输入期间数码管固定显示 `0`，不再显示 CPU 轮询 UART 时快速变化的
+内部监视值。S8 复位采用异步置位、同步释放，并要求按键释放连续稳定约
+20 ms 后才启动 CPU，避免机械抖动截断 `READY` 的首字节。
+
+自动验证命令：
+
+```powershell
+D:\Xilinx\Vivado\2019.2\bin\vivado.bat -mode batch -source sim_check.tcl -tclargs tb_uart_mmio
+D:\Xilinx\Vivado\2019.2\bin\vivado.bat -mode batch -source sim_check.tcl -tclargs tb_cpu_uart
+```
+
+已验证结果：`tb_uart_mmio` 通过；`tb_cpu_uart` 自动确认
+`12 3 105 1 -> SORTED:1 3 12 105`，并逐项检查排序后的 RAM 和
+`4, 1, 3, 12, 105` 显示序列。加入 UART 后的
+完整顶层在 100 MHz 下实现通过，布线后 WNS 为 `+0.152 ns`。
 
 ## Board display results
 
-数码管显示 `x31` 的无符号十进制值。默认程序是 `inst26_test.mem`。
+普通 CPU 测试时数码管显示 `x31` 的无符号十进制值。UART 排序完成后，
+显示队列接管数码管。UART 集成版默认程序为
+`uart_sort_demo.mem`；原CPU回归仍可选择下表中的测试程序。
 
 | Program | Final monitored result | Final display |
 | --- | --- | --- |
@@ -47,7 +118,7 @@ C:\Xilinx\Vivado\2019.2\bin\vivado.bat -mode batch -source create_project.tcl
 然后打开 `project/liucode_project.xpr`。工程默认设置如下：
 
 - `sources_1` 综合顶层：`top`，默认 `CPU_TYPE="pipeline"`，用于综合、实现和生成 bitstream。
-- `sim_1` 仿真顶层：`tb_cpu_performance`，用于性能对比。
+- UART 更新后的 `sim_1` 仿真顶层为 `tb_cpu_uart`；性能对比仍可手动选择 `tb_cpu_performance`。
 
 ### 性能测试切换
 
@@ -88,7 +159,9 @@ C:\Xilinx\Vivado\2019.2\bin\vivado.bat -mode batch -source synth_check.tcl
 C:\Xilinx\Vivado\2019.2\bin\vivado.bat -mode batch -source build_bitstream.tcl
 ```
 
-生成文件位于 `project/liucode_project.runs/impl_1/top.bit`。流水线默认设计已在 100 MHz 下通过实现时序（WNS = 0.122 ns）。
+生成文件位于 `project/liucode_project.runs/impl_1/top.bit`，另有稳定副本
+`output/uart_sort_pipeline_100mhz.bit`。加入 UART 和
+MMIO 后的流水线 SoC 已在 100 MHz 下通过实现时序（WNS = 0.188 ns）。
 
 运行工程默认的性能测试：
 

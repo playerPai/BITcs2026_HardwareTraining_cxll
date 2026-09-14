@@ -28,17 +28,17 @@ module perf_rv32_cpu_adapter #(
         if (CPU_TYPE == "pipeline") begin : gen_pipeline
             RV32_Pipeline #(.IMEM_FILE(IMEM_FILE)) u_cpu (
                 .clk(clk), .reset(reset), .enable(enable),
+                .mmio_rdata(32'b0),
+                .mmio_addr(), .mmio_wdata(), .mmio_we(), .mmio_re(),
                 .x31_out(result),
                 .retire_valid(retire_valid),
                 .retire_pc(retire_pc),
-                .retire_instr(retire_instr),
-                .int_req(1'b0), .int_en(1'b0), .mepc_out()
+                .retire_instr(retire_instr)
             );
         end else begin : gen_single_cycle
             RV32_CPU #(.IMEM_FILE(IMEM_FILE)) u_cpu (
                 .clk(clk), .reset(reset), .enable(enable),
-                .x31_out(result),
-                .int_req(1'b0), .int_en(1'b0), .mepc_out()
+                .x31_out(result)
             );
             assign retire_valid = enable && !reset;
             assign retire_pc    = u_cpu.pc;
@@ -158,7 +158,7 @@ module tb_cpu_performance;
 
     // Replace either frequency with a post-synthesis value for a timing-aware
     // comparison.  The defaults compare cycle count and CPI at the board clock.
-    localparam integer SINGLE_CYCLE_CLOCK_FREQ_HZ = 100_000_000;
+    localparam integer SINGLE_CYCLE_CLOCK_FREQ_HZ = 66_500_000;
     localparam integer PIPELINE_CLOCK_FREQ_HZ     = 100_000_000;
     localparam integer CLOCK_FREQ_HZ =
         (CPU_TYPE == "pipeline") ? PIPELINE_CLOCK_FREQ_HZ
