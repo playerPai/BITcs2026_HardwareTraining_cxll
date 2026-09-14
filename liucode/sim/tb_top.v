@@ -7,6 +7,7 @@ module tb_top;
     wire [6:0] led_high;
     wire [7:0] px;
     wire [1:0] dp;
+    wire txd;
     integer n;
     integer seen;
 
@@ -14,10 +15,14 @@ module tb_top;
 
     top #(
         .IMEM_FILE("inst26_test.mem"),
+        .CPU_TYPE("pipeline"),
         .CPU_STEP_CYCLES(200),
-        .SCAN_CYCLES(12)
+        .SCAN_CYCLES(12),
+        .RESET_RELEASE_CYCLES(2),
+        .DISPLAY_IDLE_CPU_MONITOR(1)
     ) dut (
         .I_clk(clk), .I_rst_n(rst_n),
+        .I_rs232_rxd(1'b1), .O_rs232_txd(txd),
         .O_led(led), .O_led_high(led_high),
         .O_px(px), .O_dp(dp)
     );

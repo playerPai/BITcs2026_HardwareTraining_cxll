@@ -3,6 +3,12 @@ set_property PACKAGE_PIN P15 [get_ports I_rst_n]
 set_property IOSTANDARD LVCMOS33 [get_ports {I_clk I_rst_n}]
 create_clock -period 10.000 -name sys_clk [get_ports I_clk]
 
+# On-board USB serial port, verified by the course UART example.
+# PC -> FPGA receive: N5.  FPGA -> PC transmit: T4.
+set_property PACKAGE_PIN N5 [get_ports I_rs232_rxd]
+set_property PACKAGE_PIN T4 [get_ports O_rs232_txd]
+set_property IOSTANDARD LVCMOS33 [get_ports {I_rs232_rxd O_rs232_txd}]
+
 # Right four digits: O_led[6:0] = abcdefg.
 set_property PACKAGE_PIN B2 [get_ports {O_led[0]}]
 set_property PACKAGE_PIN B3 [get_ports {O_led[1]}]
